@@ -127,3 +127,55 @@ export async function getOpexCapex(idProyecto: string) {
 
   return { opex, capex, total: opex + capex };
 }
+
+// ── Alertas detalladas ──
+export async function getAlertasDetalladas(idProyecto: string) {
+  const { data } = await supabase
+    .from('v_alertas_presupuesto')
+    .select('*')
+    .eq('id_proyecto', idProyecto)
+    .order('porcentaje', { ascending: false });
+  return data ?? [];
+}
+
+// ── Calendario lunar por mes ──
+export async function getCalendarioLunarMes(year: number, month: number) {
+  const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month + 1, 0).toISOString().split('T')[0];
+  const { data } = await supabase
+    .from('calendario_lunar')
+    .select('*')
+    .gte('fecha', firstDay)
+    .lte('fecha', lastDay)
+    .order('fecha');
+  return data ?? [];
+}
+
+// ── Registro de plagas ──
+export async function getRegistroPlagas(idEtapa: string) {
+  const { data } = await supabase
+    .from('registro_plagas')
+    .select('*, usuario:registrado_por(nombre)')
+    .eq('id_etapa', idEtapa)
+    .order('fecha_deteccion', { ascending: false });
+  return data ?? [];
+}
+
+export async function getRegistroPlagasPorProyecto(idProyecto: string) {
+  const { data: etapas } = await supabase
+    .from('etapa')
+    .select('id_etapa, tipo, parcela!inner(id_proyecto, nombre_potrero)')
+    .eq('parcela.id_proyecto', idProyecto);
+
+  if (!etapas || etapas.length === 0) return [];
+
+  const etapaIds = etapas.map((e: any) => e.id_etapa);
+  const { data } = await supabase
+    .from('registro_plagas')
+    .select('*, usuario:registrado_por(nombre)')
+    .in('id_etapa', etapaIds)
+    .order('fecha_deteccion', { ascending: false })
+    .limit(50);
+
+  return data ?? [];
+}

@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(SUPABASE_ACCESS_TOKEN=sbp_c3626976011d2772116a7f1063762cc5de7d1732 npx supabase db query --linked)",
-      "WebFetch(domain:agro-control-web.vercel.app)"
+      "WebFetch(domain:agro-control-web.vercel.app)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_c3626976011d2772116a7f1063762cc5de7d1732 npx supabase projects list)",
+      "Bash(rm -rf \"/Users/ericknaveda/Documents/GenyX- AgroControl/apps/web/.next\")",
+      "Bash(npx next:*)"
     ]
   }
 }

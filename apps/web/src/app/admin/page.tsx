@@ -5,6 +5,7 @@ import { loginWithPin, type SessionUser } from '@/lib/auth';
 import {
   IconCorn, IconProject, IconParcela, IconBudget, IconGasto,
   IconAlmacen, IconEquipo, IconEarth, IconAudit, IconMenu, IconX, IconLogout,
+  IconAlert, IconCalendar, IconBug,
 } from '@/components/Icons';
 
 import { ProyectoForm } from './components/ProyectoForm';
@@ -14,6 +15,9 @@ import { GastoForm } from './components/GastoForm';
 import { InsumoForm } from './components/InsumoForm';
 import { EquipoForm } from './components/EquipoForm';
 import { KMLImport } from './components/KMLImport';
+import { AlertasPanel } from './components/AlertasPanel';
+import { CalendarioPanel } from './components/CalendarioPanel';
+import { PlagasForm } from './components/PlagasForm';
 import { AuditLog } from './components/AuditLog';
 
 const TABS = [
@@ -21,8 +25,11 @@ const TABS = [
   { id: 'parcelas', label: 'Parcelas', Icon: IconParcela },
   { id: 'presupuesto', label: 'Presupuesto', Icon: IconBudget },
   { id: 'gastos', label: 'Gastos', Icon: IconGasto },
+  { id: 'alertas', label: 'Alertas', Icon: IconAlert },
   { id: 'insumos', label: 'Almacén', Icon: IconAlmacen },
   { id: 'equipos', label: 'Equipos', Icon: IconEquipo },
+  { id: 'plagas', label: 'Plagas', Icon: IconBug },
+  { id: 'calendario', label: 'Calendario', Icon: IconCalendar },
   { id: 'kml', label: 'Google Earth', Icon: IconEarth },
   { id: 'audit', label: 'Auditoría', Icon: IconAudit },
 ] as const;
@@ -161,8 +168,11 @@ export default function AdminPage() {
           {activeTab === 'parcelas' && <ParcelaForm user={user} />}
           {activeTab === 'presupuesto' && <PresupuestoForm user={user} />}
           {activeTab === 'gastos' && <GastoForm user={user} />}
+          {activeTab === 'alertas' && <AlertasPanel user={user} />}
           {activeTab === 'insumos' && <InsumoForm user={user} />}
           {activeTab === 'equipos' && <EquipoForm user={user} />}
+          {activeTab === 'plagas' && <PlagasForm user={user} />}
+          {activeTab === 'calendario' && <CalendarioPanel user={user} />}
           {activeTab === 'kml' && <KMLImport user={user} />}
           {activeTab === 'audit' && <AuditLog user={user} />}
         </div>
