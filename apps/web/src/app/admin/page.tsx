@@ -11,11 +11,13 @@ import { GastoForm } from './components/GastoForm';
 import { InsumoForm } from './components/InsumoForm';
 import { EquipoForm } from './components/EquipoForm';
 import { KMLImport } from './components/KMLImport';
+import { PresupuestoForm } from './components/PresupuestoForm';
 import { AuditLog } from './components/AuditLog';
 
 const TABS = [
   { id: 'proyecto', label: 'Proyecto', icon: '📋' },
   { id: 'parcelas', label: 'Parcelas', icon: '🗺️' },
+  { id: 'presupuesto', label: 'Presupuesto', icon: '📊' },
   { id: 'gastos', label: 'Gastos', icon: '💰' },
   { id: 'insumos', label: 'Almacén', icon: '📦' },
   { id: 'equipos', label: 'Equipos', icon: '🚜' },
@@ -120,6 +122,7 @@ export default function AdminPage() {
         <div className="flex-1 p-6">
           {activeTab === 'proyecto' && <ProyectoForm user={user} />}
           {activeTab === 'parcelas' && <ParcelaForm user={user} />}
+          {activeTab === 'presupuesto' && <PresupuestoForm user={user} />}
           {activeTab === 'gastos' && <GastoForm user={user} />}
           {activeTab === 'insumos' && <InsumoForm user={user} />}
           {activeTab === 'equipos' && <EquipoForm user={user} />}
