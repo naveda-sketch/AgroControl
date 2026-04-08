@@ -1,13 +1,11 @@
-[project]
-id = "agrocontrol"
-
 [api]
+enabled = true
 port = 54321
 schemas = ["public"]
 
 [db]
 port = 54322
-major_version = 15
+major_version = 17
 
 [studio]
 port = 54323

@@ -1,12 +1,13 @@
 import {
-  mockProyecto,
-  mockGastosPorEtapa,
-  mockBurnRateSemanal,
-  mockAlmacen,
-  mockCalendarioLunar,
-  mockAlertas,
-  getKPIs,
-} from '@/lib/mock-data';
+  getProyectoActivo,
+  getResumenProyecto,
+  getGastosPorEtapaTipo,
+  getAlmacen,
+  getAlertas,
+  getCalendarioLunar,
+  getBurnRateSemanal,
+  getOpexCapex,
+} from '@/lib/queries';
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
@@ -31,9 +32,44 @@ function FaseLunarIcon({ fase }: { fase: string }) {
   return <span className="text-2xl">{icons[fase] ?? '🌙'}</span>;
 }
 
-export default function DashboardPage() {
-  const kpis = getKPIs();
-  const etapas = Object.entries(mockGastosPorEtapa) as [string, typeof mockGastosPorEtapa.PREPARACION][];
+export const revalidate = 60; // ISR: revalidate every 60s
+
+export default async function DashboardPage() {
+  const proyecto = await getProyectoActivo();
+
+  if (!proyecto) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <span className="text-6xl">🌽</span>
+          <h1 className="text-2xl font-bold text-gray-700 mt-4">No hay proyecto activo</h1>
+          <p className="text-gray-500 mt-2">Crea un proyecto para comenzar</p>
+        </div>
+      </main>
+    );
+  }
+
+  const [resumen, gastosPorEtapa, almacen, alertas, calendario, burnRate, opexCapex] = await Promise.all([
+    getResumenProyecto(proyecto.id_proyecto),
+    getGastosPorEtapaTipo(proyecto.id_proyecto),
+    getAlmacen(proyecto.id_proyecto),
+    getAlertas(proyecto.id_proyecto),
+    getCalendarioLunar(),
+    getBurnRateSemanal(proyecto.id_proyecto),
+    getOpexCapex(proyecto.id_proyecto),
+  ]);
+
+  const presupuestoTotal = Number(proyecto.presupuesto_x_ha) * Number(proyecto.hectareas_totales);
+  const gastoTotal = resumen?.gasto_total ? Number(resumen.gasto_total) : 0;
+  const costoXHa = resumen?.costo_x_hectarea ? Number(resumen.costo_x_hectarea) : 0;
+  const porcentajeEjercido = resumen?.porcentaje_ejercido ? Number(resumen.porcentaje_ejercido) : 0;
+  const toneladasEstimadas = Number(proyecto.hectareas_totales) * 10;
+  const costoXTon = toneladasEstimadas > 0 ? Math.round((gastoTotal / toneladasEstimadas) * 100) / 100 : 0;
+  const burnRateAvg = burnRate.length > 0
+    ? Math.round(burnRate.reduce((s: number, b: { monto: number }) => s + b.monto, 0) / burnRate.length)
+    : 0;
+
+  const etapas = Object.entries(gastosPorEtapa || {}) as [string, { presupuestado: number; ejercido: number; label: string }][];
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -43,18 +79,19 @@ export default function DashboardPage() {
           <span className="text-3xl">🌽</span>
           <h1 className="text-2xl md:text-3xl font-bold text-agro-800">AgroControl</h1>
           <span className="bg-agro-100 text-agro-700 text-xs font-semibold px-2 py-1 rounded-full">
-            {mockProyecto.temporada}
+            {proyecto.temporada}
           </span>
+          <span className="bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full">LIVE</span>
         </div>
-        <p className="text-gray-500 ml-11">{mockProyecto.nombre} &middot; {mockProyecto.hectareas_totales} ha</p>
+        <p className="text-gray-500 ml-11">{proyecto.nombre} &middot; {proyecto.hectareas_totales} ha</p>
       </header>
 
       {/* KPI Cards */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <KPICard label="Costo / Hectárea" value={formatMoney(kpis.costoXHa)} sub={`Budget: ${formatMoney(mockProyecto.presupuesto_x_ha)}`} accent={kpis.costoXHa > mockProyecto.presupuesto_x_ha ? 'red' : 'green'} />
-        <KPICard label="Costo / Tonelada" value={formatMoney(kpis.costoXTon)} sub="Est. 10 ton/ha" accent="green" />
-        <KPICard label="% Ejercido" value={`${kpis.porcentajeEjercido}%`} sub={`${formatMoney(kpis.gastoTotal)} de ${formatMoney(kpis.presupuestoTotal)}`} accent={kpis.porcentajeEjercido > 80 ? 'red' : 'green'} />
-        <KPICard label="Burn Rate Semanal" value={formatMoney(kpis.burnRateSemanal)} sub="Promedio últimas semanas" accent="blue" />
+        <KPICard label="Costo / Hectárea" value={formatMoney(costoXHa)} sub={`Budget: ${formatMoney(Number(proyecto.presupuesto_x_ha))}`} accent={costoXHa > Number(proyecto.presupuesto_x_ha) ? 'red' : 'green'} />
+        <KPICard label="Costo / Tonelada" value={formatMoney(costoXTon)} sub="Est. 10 ton/ha" accent="green" />
+        <KPICard label="% Ejercido" value={`${porcentajeEjercido}%`} sub={`${formatMoney(gastoTotal)} de ${formatMoney(presupuestoTotal)}`} accent={porcentajeEjercido > 80 ? 'red' : 'green'} />
+        <KPICard label="Burn Rate Semanal" value={formatMoney(burnRateAvg)} sub="Promedio últimas semanas" accent="blue" />
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -83,48 +120,47 @@ export default function DashboardPage() {
         {/* Burn Rate Semanal */}
         <section className="bg-white rounded-xl shadow p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Burn Rate Semanal</h2>
-          <div className="flex items-end gap-2 h-48">
-            {mockBurnRateSemanal.map((s) => {
-              const maxMonto = Math.max(...mockBurnRateSemanal.map((x) => x.monto));
-              const heightPct = maxMonto > 0 ? (s.monto / maxMonto) * 100 : 0;
-              return (
-                <div key={s.semana} className="flex-1 flex flex-col items-center justify-end h-full">
-                  <span className="text-xs text-gray-600 mb-1">{formatMoney(s.monto)}</span>
-                  <div
-                    className="w-full bg-agro-400 rounded-t-md transition-all"
-                    style={{ height: `${Math.max(heightPct, 2)}%` }}
-                  />
-                  <span className="text-[10px] text-gray-500 mt-1 text-center leading-tight">{s.semana.split(' ')[0]}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-3 border-t pt-3">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <div className="w-3 h-0.5 bg-red-400" />
-              <span>Límite semanal: {formatMoney(kpis.presupuestoTotal / 26)}</span>
+          {burnRate.length > 0 ? (
+            <div className="flex items-end gap-2 h-48">
+              {burnRate.map((s: { semana: string; monto: number }) => {
+                const maxMonto = Math.max(...burnRate.map((x: { monto: number }) => x.monto));
+                const heightPct = maxMonto > 0 ? (s.monto / maxMonto) * 100 : 0;
+                return (
+                  <div key={s.semana} className="flex-1 flex flex-col items-center justify-end h-full">
+                    <span className="text-xs text-gray-600 mb-1">{formatMoney(s.monto)}</span>
+                    <div className="w-full bg-agro-400 rounded-t-md transition-all" style={{ height: `${Math.max(heightPct, 2)}%` }} />
+                    <span className="text-[10px] text-gray-500 mt-1 text-center">{s.semana}</span>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          ) : (
+            <p className="text-gray-400 text-center py-16">Sin datos de gastos aún</p>
+          )}
         </section>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* OPEX / CAPEX Donut */}
+        {/* OPEX / CAPEX */}
         <section className="bg-white rounded-xl shadow p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Desglose OPEX / CAPEX</h2>
           <div className="flex items-center justify-center gap-8">
             <div className="relative w-32 h-32">
               <svg viewBox="0 0 36 36" className="w-full h-full">
                 <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e5e7eb" strokeWidth="3" />
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#22c55e" strokeWidth="3"
-                  strokeDasharray={`${(135942 / 183800) * 100} ${100 - (135942 / 183800) * 100}`}
-                  strokeDashoffset="25" strokeLinecap="round" />
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#3b82f6" strokeWidth="3"
-                  strokeDasharray={`${(2858 / 183800) * 100} ${100 - (2858 / 183800) * 100}`}
-                  strokeDashoffset={`${25 - (135942 / 183800) * 100}`} strokeLinecap="round" />
+                {opexCapex.total > 0 && (
+                  <>
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#22c55e" strokeWidth="3"
+                      strokeDasharray={`${(opexCapex.opex / opexCapex.total) * 100} ${100 - (opexCapex.opex / opexCapex.total) * 100}`}
+                      strokeDashoffset="25" strokeLinecap="round" />
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#3b82f6" strokeWidth="3"
+                      strokeDasharray={`${(opexCapex.capex / opexCapex.total) * 100} ${100 - (opexCapex.capex / opexCapex.total) * 100}`}
+                      strokeDashoffset={`${25 - (opexCapex.opex / opexCapex.total) * 100}`} strokeLinecap="round" />
+                  </>
+                )}
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-lg font-bold text-gray-800">{formatMoney(183800)}</span>
+                <span className="text-lg font-bold text-gray-800">{formatMoney(opexCapex.total)}</span>
                 <span className="text-xs text-gray-500">Total</span>
               </div>
             </div>
@@ -133,14 +169,14 @@ export default function DashboardPage() {
                 <div className="w-3 h-3 rounded-full bg-agro-500" />
                 <div>
                   <p className="text-sm font-medium">OPEX</p>
-                  <p className="text-xs text-gray-500">{formatMoney(135942)} (73.9%)</p>
+                  <p className="text-xs text-gray-500">{formatMoney(opexCapex.opex)} ({opexCapex.total > 0 ? Math.round((opexCapex.opex / opexCapex.total) * 100) : 0}%)</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-blue-500" />
                 <div>
                   <p className="text-sm font-medium">CAPEX</p>
-                  <p className="text-xs text-gray-500">{formatMoney(2858)} (1.6%)</p>
+                  <p className="text-xs text-gray-500">{formatMoney(opexCapex.capex)} ({opexCapex.total > 0 ? Math.round((opexCapex.capex / opexCapex.total) * 100) : 0}%)</p>
                 </div>
               </div>
             </div>
@@ -151,8 +187,8 @@ export default function DashboardPage() {
         <section className="bg-white rounded-xl shadow p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Almacén Virtual</h2>
           <div className="space-y-3">
-            {mockAlmacen.map((item) => {
-              const usoPct = Math.round(((item.cantidad_comprada - item.cantidad_disponible) / item.cantidad_comprada) * 100);
+            {almacen.map((item: { id_item: string; producto: string; cantidad_comprada: number; cantidad_disponible: number; unidad_medida: string }) => {
+              const usoPct = Math.round(((Number(item.cantidad_comprada) - Number(item.cantidad_disponible)) / Number(item.cantidad_comprada)) * 100);
               return (
                 <div key={item.id_item}>
                   <div className="flex justify-between text-xs mb-1">
@@ -172,19 +208,19 @@ export default function DashboardPage() {
         <section className="bg-white rounded-xl shadow p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Alertas & Fase Lunar</h2>
           <div className="space-y-3 mb-4">
-            {mockAlertas.map((a, i) => (
+            {alertas.slice(0, 5).map((a: { etapa_tipo: string; concepto: string; porcentaje: number; nivel_alerta: string }, i: number) => (
               <div key={i} className="flex items-center justify-between text-sm">
                 <span className="text-gray-600 truncate">{a.concepto}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-gray-500">{a.porcentaje}%</span>
-                  <AlertBadge nivel={a.nivel} />
+                  <AlertBadge nivel={a.nivel_alerta} />
                 </div>
               </div>
             ))}
           </div>
           <div className="border-t pt-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Calendario Lunar</h3>
-            {mockCalendarioLunar.map((cl) => (
+            {calendario.length > 0 ? calendario.map((cl: { id: number; fecha: string; fase_lunar: string; recomendacion_siembra: string | null }) => (
               <div key={cl.id} className="flex items-start gap-3 mb-3">
                 <FaseLunarIcon fase={cl.fase_lunar} />
                 <div>
@@ -194,13 +230,15 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-            ))}
+            )) : (
+              <p className="text-xs text-gray-400">Sin datos lunares próximos</p>
+            )}
           </div>
         </section>
       </div>
 
       <footer className="text-center text-xs text-gray-400 mt-8">
-        AgroControl v0.0.1 &middot; Datos de demostración
+        AgroControl v0.0.1 &middot; Conectado a Supabase (datos en vivo)
       </footer>
     </main>
   );

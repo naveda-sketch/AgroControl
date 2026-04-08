@@ -4,7 +4,6 @@
 -- ============================================================
 
 -- ── Extensiones ──
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "postgis";
 
 -- ── ENUMs ──
@@ -21,7 +20,7 @@ CREATE TYPE fase_lunar AS ENUM ('nueva', 'creciente', 'llena', 'menguante');
 -- 1. USUARIO
 -- ============================================================
 CREATE TABLE usuario (
-    id_usuario UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id_usuario UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre VARCHAR(100) NOT NULL,
     rol rol_usuario NOT NULL,
     telefono VARCHAR(20),
@@ -35,7 +34,7 @@ CREATE TABLE usuario (
 -- 2. PROYECTO
 -- ============================================================
 CREATE TABLE proyecto (
-    id_proyecto UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id_proyecto UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre VARCHAR(100) NOT NULL,
     temporada VARCHAR(20) NOT NULL,
     hectareas_totales DECIMAL(10,2) NOT NULL CHECK (hectareas_totales > 0),
@@ -51,7 +50,7 @@ CREATE TABLE proyecto (
 -- 3. PARCELA
 -- ============================================================
 CREATE TABLE parcela (
-    id_parcela UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id_parcela UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_proyecto UUID NOT NULL REFERENCES proyecto(id_proyecto) ON DELETE CASCADE,
     nombre_potrero VARCHAR(100) NOT NULL,
     hectareas DECIMAL(10,2) NOT NULL CHECK (hectareas > 0),
@@ -63,7 +62,7 @@ CREATE TABLE parcela (
 -- 4. ETAPA
 -- ============================================================
 CREATE TABLE etapa (
-    id_etapa UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id_etapa UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_parcela UUID NOT NULL REFERENCES parcela(id_parcela) ON DELETE CASCADE,
     tipo etapa_tipo NOT NULL,
     fecha_inicio DATE NOT NULL,
@@ -76,7 +75,7 @@ CREATE TABLE etapa (
 -- 5. COMPROBANTE
 -- ============================================================
 CREATE TABLE comprobante (
-    id_comprobante UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id_comprobante UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     foto_url TEXT NOT NULL,
     foto_local_path TEXT,
     ocr_proveedor VARCHAR(200),
@@ -93,7 +92,7 @@ CREATE TABLE comprobante (
 -- 6. ALMACEN_VIRTUAL
 -- ============================================================
 CREATE TABLE almacen_virtual (
-    id_item UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id_item UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_proyecto UUID NOT NULL REFERENCES proyecto(id_proyecto) ON DELETE CASCADE,
     producto VARCHAR(200) NOT NULL,
     unidad_medida VARCHAR(20) NOT NULL,
@@ -107,7 +106,7 @@ CREATE TABLE almacen_virtual (
 -- 7. APLICACION_INSUMO
 -- ============================================================
 CREATE TABLE aplicacion_insumo (
-    id_aplicacion UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id_aplicacion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_item_almacen UUID NOT NULL REFERENCES almacen_virtual(id_item),
     id_etapa UUID NOT NULL REFERENCES etapa(id_etapa),
     cantidad_aplicada DECIMAL(12,3) NOT NULL CHECK (cantidad_aplicada > 0),
@@ -121,7 +120,7 @@ CREATE TABLE aplicacion_insumo (
 -- 8. GASTO
 -- ============================================================
 CREATE TABLE gasto (
-    id_gasto UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id_gasto UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_etapa UUID NOT NULL REFERENCES etapa(id_etapa),
     id_comprobante UUID REFERENCES comprobante(id_comprobante),
     id_aplicacion UUID REFERENCES aplicacion_insumo(id_aplicacion),
@@ -130,14 +129,14 @@ CREATE TABLE gasto (
     tipo gasto_tipo NOT NULL,
     fecha_registro TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     registrado_por UUID NOT NULL REFERENCES usuario(id_usuario),
-    sync_id UUID NOT NULL UNIQUE DEFAULT uuid_generate_v4()
+    sync_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid()
 );
 
 -- ============================================================
 -- 9. EQUIPO_CAPEX
 -- ============================================================
 CREATE TABLE equipo_capex (
-    id_equipo UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id_equipo UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre VARCHAR(100) NOT NULL,
     valor_adquisicion DECIMAL(14,2) NOT NULL CHECK (valor_adquisicion > 0),
     vida_util_horas INTEGER NOT NULL CHECK (vida_util_horas > 0),
@@ -152,7 +151,7 @@ CREATE TABLE equipo_capex (
 -- 10. USO_EQUIPO
 -- ============================================================
 CREATE TABLE uso_equipo (
-    id_uso UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id_uso UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_equipo UUID NOT NULL REFERENCES equipo_capex(id_equipo),
     id_etapa UUID NOT NULL REFERENCES etapa(id_etapa),
     horas_uso DECIMAL(8,2) NOT NULL CHECK (horas_uso > 0),
@@ -166,7 +165,7 @@ CREATE TABLE uso_equipo (
 -- 11. PRESUPUESTO_BASE
 -- ============================================================
 CREATE TABLE presupuesto_base (
-    id_budget UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id_budget UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_proyecto UUID NOT NULL REFERENCES proyecto(id_proyecto) ON DELETE CASCADE,
     etapa_tipo etapa_tipo NOT NULL,
     concepto VARCHAR(200) NOT NULL,
@@ -218,7 +217,7 @@ BEGIN
         ROUND(NEW.cantidad_aplicada * v_costo_unit, 2),
         'OPEX',
         NEW.operador,
-        uuid_generate_v4()
+        gen_random_uuid()
     );
 
     RETURN NEW;
@@ -252,7 +251,7 @@ BEGIN
         NEW.costo_calculado,
         'CAPEX',
         NEW.operador,
-        uuid_generate_v4()
+        gen_random_uuid()
     );
 
     RETURN NEW;
