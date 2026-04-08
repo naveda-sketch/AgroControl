@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "AgroControl",
+    "slug": "agrocontrol",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "agrocontrol",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#15803d",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.agrocontrol.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#15803d"
+      },
+      "package": "com.agrocontrol.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      "expo-image-picker",
+      "expo-sqlite"
+    ]
+  }
+}

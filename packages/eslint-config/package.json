@@ -1,0 +1,11 @@
+{
+  "name": "@agrocontrol/eslint-config",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0"
+  },
+  "files": ["base.js", "nextjs.js", "react-native.js"]
+}
