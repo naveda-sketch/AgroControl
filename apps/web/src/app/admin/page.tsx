@@ -5,7 +5,7 @@ import { loginWithPin, type SessionUser } from '@/lib/auth';
 import {
   IconCorn, IconProject, IconParcela, IconBudget, IconGasto,
   IconAlmacen, IconEquipo, IconEarth, IconAudit, IconMenu, IconX, IconLogout,
-  IconAlert, IconCalendar, IconBug,
+  IconAlert, IconCalendar, IconBug, IconWeed,
 } from '@/components/Icons';
 
 import { ProyectoForm } from './components/ProyectoForm';
@@ -18,6 +18,7 @@ import { KMLImport } from './components/KMLImport';
 import { AlertasPanel } from './components/AlertasPanel';
 import { CalendarioPanel } from './components/CalendarioPanel';
 import { PlagasForm } from './components/PlagasForm';
+import { MalezasForm } from './components/MalezasForm';
 import { AuditLog } from './components/AuditLog';
 
 const TABS = [
@@ -29,6 +30,7 @@ const TABS = [
   { id: 'insumos', label: 'Almacén', Icon: IconAlmacen },
   { id: 'equipos', label: 'Equipos', Icon: IconEquipo },
   { id: 'plagas', label: 'Plagas', Icon: IconBug },
+  { id: 'malezas', label: 'Malezas', Icon: IconWeed },
   { id: 'calendario', label: 'Calendario', Icon: IconCalendar },
   { id: 'kml', label: 'Google Earth', Icon: IconEarth },
   { id: 'audit', label: 'Auditoría', Icon: IconAudit },
@@ -172,6 +174,7 @@ export default function AdminPage() {
           {activeTab === 'insumos' && <InsumoForm user={user} />}
           {activeTab === 'equipos' && <EquipoForm user={user} />}
           {activeTab === 'plagas' && <PlagasForm user={user} />}
+          {activeTab === 'malezas' && <MalezasForm user={user} />}
           {activeTab === 'calendario' && <CalendarioPanel user={user} />}
           {activeTab === 'kml' && <KMLImport user={user} />}
           {activeTab === 'audit' && <AuditLog user={user} />}

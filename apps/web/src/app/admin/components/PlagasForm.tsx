@@ -43,6 +43,7 @@ export function PlagasForm({ user }: { user: SessionUser }) {
     const { data } = await supabase
       .from('registro_plagas')
       .select('*, usuario:registrado_por(nombre), etapa:id_etapa(tipo)')
+      .eq('tipo', 'plaga')
       .in('id_etapa', etapaIds)
       .order('fecha_deteccion', { ascending: false })
       .limit(30);
@@ -77,8 +78,8 @@ export function PlagasForm({ user }: { user: SessionUser }) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-gray-800 mb-2">Registro de Plagas y Malezas</h2>
-      <p className="text-sm text-gray-500 mb-4">Documenta problemas fitosanitarios por etapa: qué se detectó, qué se usó para combatirlo y el resultado.</p>
+      <h2 className="text-xl font-bold text-gray-800 mb-2">Registro de Plagas</h2>
+      <p className="text-sm text-gray-500 mb-4">Documenta insectos y organismos que dañan el cultivo: qué se detectó, qué insecticida se usó y el resultado.</p>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 space-y-4 max-w-2xl mb-8">
         {/* Cascading selects */}
@@ -108,16 +109,10 @@ export function PlagasForm({ user }: { user: SessionUser }) {
 
         {/* Problem details */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Tipo</label>
-            <select name="tipo" required className="w-full border rounded-lg px-3 py-2.5 text-sm">
-              <option value="plaga">Plaga</option>
-              <option value="maleza">Maleza</option>
-            </select>
-          </div>
+          <input type="hidden" name="tipo" value="plaga" />
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Nombre</label>
-            <input name="nombre" required className="w-full border rounded-lg px-3 py-2.5 text-sm" placeholder="Ej: Gusano cogollero, Zacate Johnson" />
+            <input name="nombre" required className="w-full border rounded-lg px-3 py-2.5 text-sm" placeholder="Ej: Gusano cogollero, Gallina ciega, Pulgón" />
           </div>
         </div>
 
@@ -131,8 +126,8 @@ export function PlagasForm({ user }: { user: SessionUser }) {
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Tratamiento aplicado</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Producto usado</label>
-              <input name="producto_usado" className="w-full border rounded-lg px-3 py-2.5 text-sm" placeholder="Ej: Cipermetrina 25%, Glifosato" />
+              <label className="block text-xs text-gray-600 mb-1">Insecticida usado</label>
+              <input name="producto_usado" className="w-full border rounded-lg px-3 py-2.5 text-sm" placeholder="Ej: Cipermetrina 25%, Clorpirifos" />
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">Dosis</label>
@@ -162,7 +157,7 @@ export function PlagasForm({ user }: { user: SessionUser }) {
         </div>
 
         <button type="submit" disabled={loading} className="w-full bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 disabled:bg-gray-300 transition-colors">
-          {loading ? 'Guardando...' : 'Registrar Plaga / Maleza'}
+          {loading ? 'Guardando...' : 'Registrar Plaga'}
         </button>
         {msg && <p className={`text-sm ${msg.startsWith('Error') ? 'text-red-600' : 'text-green-600'}`}>{msg}</p>}
       </form>

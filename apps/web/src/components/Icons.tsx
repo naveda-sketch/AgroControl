@@ -34,6 +34,19 @@ export function IconBug({ className = 'w-5 h-5' }: { className?: string }) {
   );
 }
 
+export function IconWeed({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke={s} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22V8" />
+      <path d="M12 8c-2-3-6-4-8-2 2-1 5 0 8 2z" />
+      <path d="M12 8c2-3 6-4 8-2-2-1-5 0-8 2z" />
+      <path d="M12 14c-2-2-5-3-7-1 2-1 4 0 7 1z" />
+      <path d="M12 14c2-2 5-3 7-1-2-1-4 0-7 1z" />
+      <path d="M12 4c0-1 .5-2 1-2M12 4c0-1-.5-2-1-2" />
+    </svg>
+  );
+}
+
 export function IconCorn({ className = 'w-5 h-5' }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke={s} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
