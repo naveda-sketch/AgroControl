@@ -32,6 +32,7 @@ export function ProyectoForm({ user }: { user: SessionUser }) {
       presupuesto_x_ha: Number(fd.get('presupuesto_x_ha')),
       fecha_inicio: fd.get('fecha_inicio'),
       status: 'activo',
+      creado_por: user.id_usuario,
     });
 
     setLoading(false);

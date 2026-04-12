@@ -35,6 +35,7 @@ export function ParcelaForm({ user }: { user: SessionUser }) {
       nombre_potrero: fd.get('nombre_potrero'),
       hectareas: Number(fd.get('hectareas')),
       tipo_suelo: fd.get('tipo_suelo') || null,
+      creado_por: user.id_usuario,
     });
 
     setLoading(false);
