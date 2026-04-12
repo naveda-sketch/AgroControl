@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { deleteRecord, restoreRecord } from '@/lib/delete-helpers';
+import { UndoToast } from '@/components/UndoToast';
 import type { SessionUser } from '@/lib/auth';
 
 export function ProyectoForm({ user }: { user: SessionUser }) {
   const [proyectos, setProyectos] = useState<any[]>([]);
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [undoData, setUndoData] = useState<{ message: string; record: any } | null>(null);
 
   useEffect(() => { loadProyectos(); }, []);
 
@@ -37,6 +40,22 @@ export function ProyectoForm({ user }: { user: SessionUser }) {
     e.currentTarget.reset();
     loadProyectos();
   }
+
+  async function handleDelete(id: string, nombre: string) {
+    try {
+      const record = await deleteRecord('proyecto', 'id_proyecto', id);
+      setUndoData({ message: `Proyecto "${nombre}" eliminado`, record });
+      loadProyectos();
+    } catch (err: any) {
+      setMsg('Error al eliminar: ' + err.message);
+    }
+  }
+
+  const handleUndo = useCallback(async () => {
+    if (!undoData) return;
+    await restoreRecord('proyecto', undoData.record);
+    loadProyectos();
+  }, [undoData]);
 
   return (
     <div>
@@ -80,12 +99,21 @@ export function ProyectoForm({ user }: { user: SessionUser }) {
               <p className="font-medium text-gray-800">{p.nombre}</p>
               <p className="text-xs text-gray-500">{p.temporada} &middot; {p.hectareas_totales} ha &middot; ${Number(p.presupuesto_x_ha).toLocaleString()}/ha</p>
             </div>
-            <span className={`text-xs px-2 py-1 rounded-full ${p.status === 'activo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-              {p.status}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2 py-1 rounded-full ${p.status === 'activo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                {p.status}
+              </span>
+              <button onClick={() => handleDelete(p.id_proyecto, p.nombre)} className="text-red-400 hover:text-red-600 transition-colors" title="Eliminar">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+              </button>
+            </div>
           </div>
         ))}
       </div>
+
+      {undoData && (
+        <UndoToast message={undoData.message} onUndo={handleUndo} onDismiss={() => setUndoData(null)} />
+      )}
     </div>
   );
 }

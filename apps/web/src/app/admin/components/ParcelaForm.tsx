@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { deleteRecord, restoreRecord } from '@/lib/delete-helpers';
+import { UndoToast } from '@/components/UndoToast';
 import type { SessionUser } from '@/lib/auth';
 
 export function ParcelaForm({ user }: { user: SessionUser }) {
@@ -10,6 +12,7 @@ export function ParcelaForm({ user }: { user: SessionUser }) {
   const [selectedProyecto, setSelectedProyecto] = useState('');
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [undoData, setUndoData] = useState<{ message: string; record: any } | null>(null);
 
   useEffect(() => {
     supabase.from('proyecto').select('id_proyecto, nombre').eq('status', 'activo').then(({ data }) => setProyectos(data ?? []));
@@ -60,6 +63,28 @@ export function ParcelaForm({ user }: { user: SessionUser }) {
     setMsg('4 etapas creadas para la parcela');
   }
 
+  async function loadParcelas() {
+    if (!selectedProyecto) return;
+    const { data } = await supabase.from('parcela').select('*').eq('id_proyecto', selectedProyecto);
+    setParcelas(data ?? []);
+  }
+
+  async function handleDelete(id: string, nombre: string) {
+    try {
+      const record = await deleteRecord('parcela', 'id_parcela', id);
+      setUndoData({ message: `Parcela "${nombre}" eliminada`, record });
+      loadParcelas();
+    } catch (err: any) {
+      setMsg('Error al eliminar: ' + err.message);
+    }
+  }
+
+  const handleUndo = useCallback(async () => {
+    if (!undoData) return;
+    await restoreRecord('parcela', undoData.record);
+    loadParcelas();
+  }, [undoData]);
+
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-800 mb-4">Parcelas</h2>
@@ -102,16 +127,25 @@ export function ParcelaForm({ user }: { user: SessionUser }) {
                   <p className="font-medium text-gray-800">{p.nombre_potrero}</p>
                   <p className="text-xs text-gray-500">{p.hectareas} ha {p.tipo_suelo ? `· ${p.tipo_suelo}` : ''}</p>
                 </div>
-                <button
-                  onClick={() => crearEtapas(p.id_parcela, p.hectareas)}
-                  className="text-xs bg-agro-100 text-agro-700 px-3 py-1.5 rounded-lg hover:bg-agro-200"
-                >
-                  + Crear 4 Etapas
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => crearEtapas(p.id_parcela, p.hectareas)}
+                    className="text-xs bg-agro-100 text-agro-700 px-3 py-1.5 rounded-lg hover:bg-agro-200"
+                  >
+                    + Crear 4 Etapas
+                  </button>
+                  <button onClick={() => handleDelete(p.id_parcela, p.nombre_potrero)} className="text-red-400 hover:text-red-600 transition-colors" title="Eliminar">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </>
+      )}
+
+      {undoData && (
+        <UndoToast message={undoData.message} onUndo={handleUndo} onDismiss={() => setUndoData(null)} />
       )}
     </div>
   );

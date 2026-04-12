@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { deleteRecord, restoreRecord } from '@/lib/delete-helpers';
+import { UndoToast } from '@/components/UndoToast';
 import type { SessionUser } from '@/lib/auth';
 
 const TIPO_STYLES: Record<string, string> = {
@@ -18,6 +20,7 @@ export function PlagasForm({ user }: { user: SessionUser }) {
   const [registros, setRegistros] = useState<any[]>([]);
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [undoData, setUndoData] = useState<{ message: string; record: any } | null>(null);
 
   useEffect(() => {
     supabase.from('proyecto').select('id_proyecto, nombre').eq('status', 'activo').then(({ data }) => setProyectos(data ?? []));
@@ -75,6 +78,20 @@ export function PlagasForm({ user }: { user: SessionUser }) {
     e.currentTarget.reset();
     loadRegistros();
   }
+
+  async function handleDelete(id: string, nombre: string) {
+    try {
+      const record = await deleteRecord('registro_plagas', 'id', id);
+      setUndoData({ message: `Plaga "${nombre}" eliminada`, record });
+      loadRegistros();
+    } catch (err: any) { setMsg('Error al eliminar: ' + err.message); }
+  }
+
+  const handleUndo = useCallback(async () => {
+    if (!undoData) return;
+    await restoreRecord('registro_plagas', undoData.record);
+    loadRegistros();
+  }, [undoData]);
 
   return (
     <div>
@@ -178,6 +195,7 @@ export function PlagasForm({ user }: { user: SessionUser }) {
                   <th className="px-3 py-2 text-left text-xs text-gray-500">Dosis</th>
                   <th className="px-3 py-2 text-left text-xs text-gray-500">Resultado</th>
                   <th className="px-3 py-2 text-left text-xs text-gray-500">Registró</th>
+                  <th className="px-3 py-2 w-10"></th>
                 </tr>
               </thead>
               <tbody>
@@ -195,6 +213,11 @@ export function PlagasForm({ user }: { user: SessionUser }) {
                     <td className="px-3 py-2 text-gray-600">{r.dosis ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{r.resultado ?? '—'}</td>
                     <td className="px-3 py-2 text-gray-500 text-xs">{r.usuario?.nombre ?? '—'}</td>
+                    <td className="px-3 py-2">
+                      <button onClick={() => handleDelete(r.id, r.nombre)} className="text-red-400 hover:text-red-600 transition-colors" title="Eliminar">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -202,6 +225,7 @@ export function PlagasForm({ user }: { user: SessionUser }) {
           </div>
         </>
       )}
+      {undoData && <UndoToast message={undoData.message} onUndo={handleUndo} onDismiss={() => setUndoData(null)} />}
     </div>
   );
 }

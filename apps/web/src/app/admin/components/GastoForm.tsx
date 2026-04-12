@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { deleteRecord, restoreRecord } from '@/lib/delete-helpers';
+import { UndoToast } from '@/components/UndoToast';
 import type { SessionUser } from '@/lib/auth';
 
 export function GastoForm({ user }: { user: SessionUser }) {
@@ -13,21 +15,18 @@ export function GastoForm({ user }: { user: SessionUser }) {
   const [gastos, setGastos] = useState<any[]>([]);
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [undoData, setUndoData] = useState<{ message: string; record: any } | null>(null);
 
   useEffect(() => {
     supabase.from('proyecto').select('id_proyecto, nombre').eq('status', 'activo').then(({ data }) => setProyectos(data ?? []));
   }, []);
 
   useEffect(() => {
-    if (selectedProyecto) {
-      supabase.from('parcela').select('id_parcela, nombre_potrero').eq('id_proyecto', selectedProyecto).then(({ data }) => setParcelas(data ?? []));
-    }
+    if (selectedProyecto) supabase.from('parcela').select('id_parcela, nombre_potrero').eq('id_proyecto', selectedProyecto).then(({ data }) => setParcelas(data ?? []));
   }, [selectedProyecto]);
 
   useEffect(() => {
-    if (selectedParcela) {
-      supabase.from('etapa').select('id_etapa, tipo, status').eq('id_parcela', selectedParcela).then(({ data }) => setEtapas(data ?? []));
-    }
+    if (selectedParcela) supabase.from('etapa').select('id_etapa, tipo, status').eq('id_parcela', selectedParcela).then(({ data }) => setEtapas(data ?? []));
   }, [selectedParcela]);
 
   async function loadGastos() {
@@ -58,29 +57,43 @@ export function GastoForm({ user }: { user: SessionUser }) {
 
     setLoading(false);
     if (error) { setMsg('Error: ' + error.message); return; }
-
     const warning = monto > 50000 ? ' (Requiere aprobación del CFO por ser >$50,000)' : '';
-    const compWarning = monto > 10000 ? ' Recuerda adjuntar comprobante.' : '';
-    setMsg('Gasto registrado' + warning + compWarning);
+    setMsg('Gasto registrado' + warning);
     e.currentTarget.reset();
     loadGastos();
   }
 
+  async function handleDelete(id: string, concepto: string) {
+    try {
+      const record = await deleteRecord('gasto', 'id_gasto', id);
+      setUndoData({ message: `Gasto "${concepto}" eliminado`, record });
+      loadGastos();
+    } catch (err: any) {
+      setMsg('Error al eliminar: ' + err.message);
+    }
+  }
+
+  const handleUndo = useCallback(async () => {
+    if (!undoData) return;
+    await restoreRecord('gasto', undoData.record);
+    loadGastos();
+  }, [undoData]);
+
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-800 mb-4">Registrar Gasto</h2>
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-4 max-w-lg mb-8">
-        <div className="grid grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 space-y-4 max-w-lg mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Proyecto</label>
-            <select required className="w-full border rounded-lg px-3 py-2 text-sm" onChange={(e) => setSelectedProyecto(e.target.value)}>
+            <select required className="w-full border rounded-lg px-3 py-2.5 text-sm" onChange={(e) => setSelectedProyecto(e.target.value)}>
               <option value="">Seleccionar...</option>
               {proyectos.map((p) => <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Parcela</label>
-            <select required className="w-full border rounded-lg px-3 py-2 text-sm" onChange={(e) => setSelectedParcela(e.target.value)}>
+            <select required className="w-full border rounded-lg px-3 py-2.5 text-sm" onChange={(e) => setSelectedParcela(e.target.value)}>
               <option value="">Seleccionar...</option>
               {parcelas.map((p) => <option key={p.id_parcela} value={p.id_parcela}>{p.nombre_potrero}</option>)}
             </select>
@@ -88,7 +101,7 @@ export function GastoForm({ user }: { user: SessionUser }) {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Etapa</label>
-          <select name="id_etapa" required className="w-full border rounded-lg px-3 py-2 text-sm">
+          <select name="id_etapa" required className="w-full border rounded-lg px-3 py-2.5 text-sm">
             <option value="">Seleccionar etapa...</option>
             {etapas.map((e) => (
               <option key={e.id_etapa} value={e.id_etapa} disabled={e.status === 'completada'}>
@@ -99,16 +112,16 @@ export function GastoForm({ user }: { user: SessionUser }) {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Concepto</label>
-          <input name="concepto" required className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Ej: Diésel para rastreo" />
+          <input name="concepto" required className="w-full border rounded-lg px-3 py-2.5 text-sm" placeholder="Ej: Diésel para rastreo" />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Monto ($)</label>
-            <input name="monto" type="number" step="0.01" required className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="15000" />
+            <input name="monto" type="number" step="0.01" required className="w-full border rounded-lg px-3 py-2.5 text-sm" placeholder="15000" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-            <select name="tipo" required className="w-full border rounded-lg px-3 py-2 text-sm">
+            <select name="tipo" required className="w-full border rounded-lg px-3 py-2.5 text-sm">
               <option value="OPEX">OPEX (Gasto operativo)</option>
               <option value="CAPEX">CAPEX (Activo/Equipo)</option>
             </select>
@@ -117,7 +130,7 @@ export function GastoForm({ user }: { user: SessionUser }) {
         <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500">
           Registrado por: <strong>{user.nombre}</strong> ({user.rol})
         </div>
-        <button type="submit" disabled={loading} className="w-full bg-agro-700 text-white py-2.5 rounded-lg font-semibold hover:bg-agro-800 disabled:bg-gray-300">
+        <button type="submit" disabled={loading} className="w-full bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 disabled:bg-gray-300 transition-colors">
           {loading ? 'Guardando...' : 'Registrar Gasto'}
         </button>
         {msg && <p className={`text-sm ${msg.startsWith('Error') ? 'text-red-600' : 'text-green-600'}`}>{msg}</p>}
@@ -126,33 +139,43 @@ export function GastoForm({ user }: { user: SessionUser }) {
       {gastos.length > 0 && (
         <>
           <h3 className="text-lg font-semibold text-gray-700 mb-3">Últimos Gastos</h3>
-          <div className="bg-white rounded-xl shadow overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs text-gray-500">Concepto</th>
-                  <th className="px-4 py-2 text-right text-xs text-gray-500">Monto</th>
-                  <th className="px-4 py-2 text-center text-xs text-gray-500">Tipo</th>
-                  <th className="px-4 py-2 text-left text-xs text-gray-500">Registró</th>
-                  <th className="px-4 py-2 text-left text-xs text-gray-500">Fecha</th>
+                  <th className="px-3 py-2 text-left text-xs text-gray-500">Concepto</th>
+                  <th className="px-3 py-2 text-right text-xs text-gray-500">Monto</th>
+                  <th className="px-3 py-2 text-center text-xs text-gray-500">Tipo</th>
+                  <th className="px-3 py-2 text-left text-xs text-gray-500">Registró</th>
+                  <th className="px-3 py-2 text-left text-xs text-gray-500">Fecha</th>
+                  <th className="px-3 py-2 w-10"></th>
                 </tr>
               </thead>
               <tbody>
                 {gastos.map((g) => (
-                  <tr key={g.id_gasto} className="border-t">
-                    <td className="px-4 py-2 text-gray-800">{g.concepto}</td>
-                    <td className="px-4 py-2 text-right font-medium">${Number(g.monto).toLocaleString()}</td>
-                    <td className="px-4 py-2 text-center">
+                  <tr key={g.id_gasto} className="border-t hover:bg-gray-50">
+                    <td className="px-3 py-2 text-gray-800">{g.concepto}</td>
+                    <td className="px-3 py-2 text-right font-medium">${Number(g.monto).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-center">
                       <span className={`text-xs px-2 py-0.5 rounded ${g.tipo === 'OPEX' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{g.tipo}</span>
                     </td>
-                    <td className="px-4 py-2 text-gray-600">{g.usuario?.nombre ?? '—'}</td>
-                    <td className="px-4 py-2 text-gray-500 text-xs">{new Date(g.fecha_registro).toLocaleString('es-MX')}</td>
+                    <td className="px-3 py-2 text-gray-600 text-xs">{g.usuario?.nombre ?? '—'}</td>
+                    <td className="px-3 py-2 text-gray-500 text-xs">{new Date(g.fecha_registro).toLocaleDateString('es-MX')}</td>
+                    <td className="px-3 py-2">
+                      <button onClick={() => handleDelete(g.id_gasto, g.concepto)} className="text-red-400 hover:text-red-600 transition-colors" title="Eliminar">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </>
+      )}
+
+      {undoData && (
+        <UndoToast message={undoData.message} onUndo={handleUndo} onDismiss={() => setUndoData(null)} />
       )}
     </div>
   );
